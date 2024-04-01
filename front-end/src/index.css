@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes moveCar {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(200px);
+  }
+}
+
+.moveCarAnimation {
+  animation: moveCar 1s forwards;
+}

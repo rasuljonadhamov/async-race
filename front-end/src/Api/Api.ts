@@ -57,33 +57,24 @@ class API {
   }
 
   static async startEngine(id: number): Promise<StartStopI> {
-    const resp = await fetch(
-      `${API.engine}?id=${id}&status=${EngineStatus.START}`,
-      {
-        method: "PATCH",
-      }
-    );
+    const resp = await fetch(`${API.engine}?id=${id}&status=started`, {
+      method: "PATCH",
+    });
     return resp.json();
   }
 
   static async stopEngine(id: number): Promise<StartStopI> {
-    const resp = await fetch(
-      `${API.engine}?id=${id}&status=${EngineStatus.STOP}`,
-      {
-        method: "PATCH",
-      }
-    );
+    const resp = await fetch(`${API.engine}?id=${id}&status=stopped`, {
+      method: "PATCH",
+    });
     return resp.json();
   }
 
   static async drive(id: number): Promise<DriveI> {
     try {
-      const resp = await fetch(
-        `${API.engine}?id=${id}&status=${EngineStatus.DRIVE}`,
-        {
-          method: "PATCH",
-        }
-      );
+      const resp = await fetch(`${API.engine}?id=${id}&status=drive`, {
+        method: "PATCH",
+      });
 
       const status = resp.status;
 

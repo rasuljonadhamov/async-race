@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import API from "../Api/Api";
 import { renderCar } from "./RenderCar";
+import "../index.css";
 
 interface Car {
   id: number;
@@ -130,25 +131,46 @@ const Garage: React.FC = () => {
   const startEngine = async (id: number) => {
     try {
       await API.startEngine(id);
-      setAnimationInProgress(true);
-      setTimeout(() => {
-        setCars((prevCars) =>
-          prevCars.map((car) =>
-            car.id === id ? { ...car, isEngineStarted: true } : car
-          )
-        );
-        setAnimationInProgress(false);
-      }, 1000);
+      setAnimationInProgress(id);
 
-      const button = document.getElementById(`start-engine-button-${id}`);
-      if (button) {
-        button.classList.add("moveCarAnimation");
-        setTimeout(() => {
-          button.classList.remove("moveCarAnimation");
-        }, 1000);
-      }
+      const updatedCars = cars.map((car) =>
+        car.id === id ? { ...car, isEngineStarted: true } : car
+      );
+      setCars(updatedCars);
+
+      setTimeout(() => {
+        setAnimationInProgress(null);
+      }, 1000);
     } catch (error) {
       console.error("Error starting engine:", error);
+    }
+  };
+
+  const startRace = async () => {
+    try {
+      setAnimationInProgress(true);
+
+      for (const car of cars.slice(
+        (currentPage - 1) * carsPerPage,
+        currentPage * carsPerPage
+      )) {
+        await API.startEngine(car.id);
+      }
+
+      const updatedCars = cars.map((car) => {
+        if (car.isEngineStarted) {
+          return { ...car };
+        } else {
+          return { ...car, isEngineStarted: true };
+        }
+      });
+      setCars(updatedCars);
+
+      setTimeout(() => {
+        setAnimationInProgress(false);
+      }, 1000);
+    } catch (error) {
+      console.error("Error starting race:", error);
     }
   };
 
@@ -156,6 +178,12 @@ const Garage: React.FC = () => {
     <div className="p-4 text-white">
       <h2 className="text-2xl mb-4">Garage</h2>
       <div className="flex items-center mb-4">
+        <button
+          onClick={startRace}
+          className="bg-green-500 text-amber-50 py-2 px-3 mr-2 rounded-sm"
+        >
+          Race
+        </button>
         <input
           type="text"
           value={newCarName}
@@ -207,7 +235,7 @@ const Garage: React.FC = () => {
                   disabled={car.isEngineStarted}
                   className={`mr-2 bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded ${
                     car.isEngineStarted && "opacity-50 cursor-not-allowed"
-                  }`}
+                  } `}
                 >
                   A
                 </button>
@@ -224,9 +252,12 @@ const Garage: React.FC = () => {
               </div>
 
               <div
-                className=" items-center"
+                className={` border-gray-300 rounded-md p-4 ${
+                  animationInProgress ? "moveCarAnimation" : ""
+                }`}
                 dangerouslySetInnerHTML={{ __html: renderCar(car) }}
               />
+              <div>{car.name}</div>
             </div>
             {editCarId === car.id && (
               <div className="mt-2">

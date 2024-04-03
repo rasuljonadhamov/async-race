@@ -2,15 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes moveCar {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(200px);
-  }
+.moveCarAnimation {
+  animation: carMovement 1s ease-in-out forwards;
 }
 
-.moveCarAnimation {
-  animation: moveCar 1s forwards;
+@keyframes carMovement {
+  from {
+    transform: translateX(0px);
+  }
+  to {
+    transform: translateX(100px);
+  }
 }

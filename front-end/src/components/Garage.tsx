@@ -10,6 +10,22 @@ interface Car {
   isEngineStarted: boolean;
 }
 
+const carNames = [
+  "Tesla",
+  "Model S",
+  "Ford",
+  "Mustang",
+  "Lambargini",
+  "Bugatti",
+  "Ferrari",
+  "G Class",
+  "Mercades",
+  "AMG",
+  "Chiron",
+  "Tayota",
+  "Chazor",
+];
+
 const Garage: React.FC = () => {
   const [cars, setCars] = useState<Car[]>([]);
   const [newCarName, setNewCarName] = useState<string>("");
@@ -18,8 +34,10 @@ const Garage: React.FC = () => {
   const [editCarName, setEditCarName] = useState<string>("");
   const [editCarColor, setEditCarColor] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [animationInProgress, setAnimationInProgress] =
+  const [raceAnimationInProgress, setRaceAnimationInProgress] =
     useState<boolean>(false);
+  const [individualAnimationInProgress, setIndividualAnimationInProgress] =
+    useState<number | null>(null);
   const carsPerPage = 7;
 
   useEffect(() => {
@@ -41,8 +59,9 @@ const Garage: React.FC = () => {
       for (let i = 1; i <= 100; i++) {
         const randomColor =
           "#" + Math.floor(Math.random() * 16777215).toString(16);
+        const randomNameIndex = Math.floor(Math.random() * carNames.length);
         const newCar: Car = await API.createCar({
-          name: `Random Car ${i}`,
+          name: carNames[randomNameIndex],
           color: randomColor,
         });
         randomCars.push(newCar);
@@ -52,6 +71,7 @@ const Garage: React.FC = () => {
       console.error("Error generating random cars:", error);
     }
   };
+
   const addCar = async () => {
     try {
       if (!newCarName.trim()) return;
@@ -131,7 +151,7 @@ const Garage: React.FC = () => {
   const startEngine = async (id: number) => {
     try {
       await API.startEngine(id);
-      setAnimationInProgress(id);
+      setIndividualAnimationInProgress(id);
 
       const updatedCars = cars.map((car) =>
         car.id === id ? { ...car, isEngineStarted: true } : car
@@ -139,7 +159,7 @@ const Garage: React.FC = () => {
       setCars(updatedCars);
 
       setTimeout(() => {
-        setAnimationInProgress(null);
+        setIndividualAnimationInProgress(null);
       }, 1000);
     } catch (error) {
       console.error("Error starting engine:", error);
@@ -148,30 +168,25 @@ const Garage: React.FC = () => {
 
   const startRace = async () => {
     try {
-      setAnimationInProgress(true);
+      setRaceAnimationInProgress(true);
 
-      for (const car of cars.slice(
-        (currentPage - 1) * carsPerPage,
-        currentPage * carsPerPage
-      )) {
-        await API.startEngine(car.id);
-      }
-
-      const updatedCars = cars.map((car) => {
-        if (car.isEngineStarted) {
-          return { ...car };
-        } else {
-          return { ...car, isEngineStarted: true };
-        }
-      });
-      setCars(updatedCars);
+      await Promise.all(
+        cars.map(async (car) => {
+          await API.startEngine(car.id);
+        })
+      );
 
       setTimeout(() => {
-        setAnimationInProgress(false);
+        setRaceAnimationInProgress(false);
       }, 1000);
     } catch (error) {
       console.error("Error starting race:", error);
     }
+  };
+
+  const resetRace = () => {
+    setRaceAnimationInProgress(false);
+    setIndividualAnimationInProgress(null);
   };
 
   return (
@@ -183,6 +198,12 @@ const Garage: React.FC = () => {
           className="bg-green-500 text-amber-50 py-2 px-3 mr-2 rounded-sm"
         >
           Race
+        </button>
+        <button
+          onClick={resetRace}
+          className="bg-red-500 text-amber-50 py-2 px-3 mr-2 rounded-sm"
+        >
+          Reset
         </button>
         <input
           type="text"
@@ -252,12 +273,26 @@ const Garage: React.FC = () => {
               </div>
 
               <div
-                className={` border-gray-300 rounded-md p-4 ${
-                  animationInProgress ? "moveCarAnimation" : ""
+                key={car.id}
+                className={`rounded-md p-4 ${
+                  raceAnimationInProgress ||
+                  individualAnimationInProgress === car.id
+                    ? "moveCarAnimation"
+                    : ""
                 }`}
                 dangerouslySetInnerHTML={{ __html: renderCar(car) }}
               />
-              <div>{car.name}</div>
+              <div
+                className={`rounded-md p-4  ${
+                  raceAnimationInProgress ||
+                  individualAnimationInProgress === car.id
+                    ? "moveCarAnimation"
+                    : ""
+                }`}
+                style={{ color: car.color }}
+              >
+                {car.name}
+              </div>
             </div>
             {editCarId === car.id && (
               <div className="mt-2">

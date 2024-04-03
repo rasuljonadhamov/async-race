@@ -11,6 +11,6 @@
     transform: translateX(0px);
   }
   to {
-    transform: translateX(100px);
+    transform: translateX(500px);
   }
 }

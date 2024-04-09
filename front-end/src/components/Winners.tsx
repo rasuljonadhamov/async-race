@@ -1,15 +1,8 @@
-import { useState } from "react";
-
-interface Car {
-  id: number;
-  name: string;
-  color: string;
-  wins: number;
-  bestTime: string;
-}
+import React, { useState, useEffect } from "react";
+import API, { Car, Winner } from "../Api/Api";
 
 const Winners: React.FC = () => {
-  const [winners, setWinners] = useState<Car[]>([]);
+  const [winners, setWinners] = useState<Winner[]>([]);
 
   const sortByWins = () => {
     const sortedWinners = [...winners].sort((a, b) => b.wins - a.wins);
@@ -18,21 +11,40 @@ const Winners: React.FC = () => {
 
   const sortByBestTime = () => {
     const sortedWinners = [...winners].sort((a, b) => {
-      const timeA = Date.parse("1970-01-01T" + a.bestTime + "Z");
-      const timeB = Date.parse("1970-01-01T" + b.bestTime + "Z");
+      // Convert time strings to Date objects for comparison
+      const timeA = new Date("1970-01-01T" + a.time + "Z").getTime();
+      const timeB = new Date("1970-01-01T" + b.time + "Z").getTime();
       return timeA - timeB;
     });
     setWinners(sortedWinners);
   };
 
-  const mockWinners: Car[] = [
-    { id: 1, name: "Car 1", color: "#ff0000", wins: 5, bestTime: "00:15:30" },
-    { id: 2, name: "Car 2", color: "#00ff00", wins: 3, bestTime: "00:12:45" },
-    { id: 3, name: "Car 3", color: "#0000ff", wins: 2, bestTime: "00:10:20" },
-  ];
+  useEffect(() => {
+    const fetchWinners = async () => {
+      try {
+        const winnersData = await API.getWinners();
+        const carsData = await API.getCars();
+        const winnersWithCarDetails: Winner[] = [];
 
-  useState(() => {
-    setWinners(mockWinners);
+        for (const winner of winnersData) {
+          const car = carsData.items.find((car) => car.id === winner.id);
+          if (car) {
+            winnersWithCarDetails.push({
+              ...winner,
+              name: car.name,
+              color: car.color,
+            });
+          }
+        }
+        console.log(winnersWithCarDetails, "details");
+
+        setWinners(winnersWithCarDetails);
+      } catch (error) {
+        console.error("Error fetching winners:", error);
+      }
+    };
+
+    fetchWinners();
   }, []);
 
   return (
@@ -52,7 +64,7 @@ const Winners: React.FC = () => {
           Sort by Best Time
         </button>
       </div>
-      <table className="w-full">
+      <table className="w-full text-center">
         <thead>
           <tr>
             <th className="px-4 py-2">Image</th>
@@ -61,18 +73,18 @@ const Winners: React.FC = () => {
             <th className="px-4 py-2">Best Time</th>
           </tr>
         </thead>
-        <tbody>
-          {winners.map((car) => (
-            <tr key={car.id}>
+        <tbody className="">
+          {winners.map((winner) => (
+            <tr key={winner.id}>
               <td className="px-4 py-2">
                 <div
-                  className="w-8 h-8"
-                  style={{ backgroundColor: car.color }}
+                  className="w-8 h-8 "
+                  style={{ backgroundColor: winner.color }}
                 ></div>
               </td>
-              <td className="px-4 py-2">{car.name}</td>
-              <td className="px-4 py-2">{car.wins}</td>
-              <td className="px-4 py-2">{car.bestTime}</td>
+              <td className="px-4 py-2">{winner.name}</td>
+              <td className="px-4 py-2">{winner.wins}</td>
+              <td className="px-4 py-2">{winner.time}</td>
             </tr>
           ))}
         </tbody>
@@ -82,3 +94,102 @@ const Winners: React.FC = () => {
 };
 
 export default Winners;
+
+// import React, { useState, useEffect } from "react";
+// import API, { Car, Winner } from "../Api/Api";
+
+// const Winners: React.FC = () => {
+//   const [winners, setWinners] = useState<Winner[]>([]);
+
+//   const sortByWins = () => {
+//     const sortedWinners = [...winners].sort((a, b) => b.wins - a.wins);
+//     setWinners(sortedWinners);
+//   };
+
+//   const sortByBestTime = () => {
+//     const sortedWinners = [...winners].sort((a, b) => {
+//       const timeA = Date.parse("1970-01-01T" + a.bestTime + "Z");
+//       const timeB = Date.parse("1970-01-01T" + b.bestTime + "Z");
+//       return timeA - timeB;
+//     });
+//     setWinners(sortedWinners);
+//   };
+
+//   useEffect(() => {
+//     const fetchWinners = async () => {
+//       try {
+//         const winnersData = await API.getWinners();
+//         const carsData = await API.getCars();
+//         const winnersWithCarDetails: Winner[] = [];
+
+//         for (const winner of winnersData) {
+//           const car = carsData.items.find((car) => car.id === winner.id);
+//           if (car) {
+//             winnersWithCarDetails.push({
+//               ...winner,
+//               name: car.name,
+//               color: car.color,
+//             });
+//           }
+//         }
+//         console.log(
+//           { ...winnersWithCarDetails, time: winnersWithCarDetails.velocity },
+//           "details"
+//         );
+
+//         setWinners(winnersWithCarDetails);
+//       } catch (error) {
+//         console.error("Error fetching winners:", error);
+//       }
+//     };
+
+//     fetchWinners();
+//   }, []);
+
+//   return (
+//     <div className="p-4 text-white">
+//       <h2 className="text-2xl mb-4">Winners</h2>
+//       <div className="mb-4">
+//         <button
+//           onClick={sortByWins}
+//           className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded mr-2"
+//         >
+//           Sort by Wins
+//         </button>
+//         <button
+//           onClick={sortByBestTime}
+//           className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded"
+//         >
+//           Sort by Best Time
+//         </button>
+//       </div>
+//       <table className="w-full text-center">
+//         <thead>
+//           <tr>
+//             <th className="px-4 py-2">Image</th>
+//             <th className="px-4 py-2">Name</th>
+//             <th className="px-4 py-2">Wins</th>
+//             <th className="px-4 py-2">Best Time</th>
+//           </tr>
+//         </thead>
+//         <tbody className="">
+//           {winners.map((winner) => (
+//             <tr key={winner.id}>
+//               <td className="px-4 py-2">
+//                 <div
+//                   className="w-8 h-8 "
+//                   style={{ backgroundColor: winner.color }}
+//                 ></div>
+//               </td>
+//               <td className="px-4 py-2">{winner.name}</td>
+//               <td className="px-4 py-2">{winner.wins}</td>
+//               <td className="px-4 py-2">{winner.time}</td>
+//             </tr>
+//           ))}
+//         </tbody>
+//       </table>
+//     </div>
+//   );
+// };
+
+// export default Winners;

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import API from "../Api/Api";
 import { renderCar } from "./RenderCar";
+import WinnerModal from "./WinnerModal.tsx";
 import "../index.css";
 
 interface Car {
@@ -8,6 +9,12 @@ interface Car {
   name: string;
   color: string;
   isEngineStarted: boolean;
+}
+
+interface WinCar {
+  id: number;
+  velocity: string;
+  distance: string;
 }
 
 const carNames = [
@@ -28,6 +35,7 @@ const carNames = [
 
 const Garage: React.FC = () => {
   const [cars, setCars] = useState<Car[]>([]);
+  const carRef = useRef<HTMLDivElement>();
   const [newCarName, setNewCarName] = useState<string>("");
   const [newCarColor, setNewCarColor] = useState<string>("#000000");
   const [editCarId, setEditCarId] = useState<number | null>(null);
@@ -38,6 +46,9 @@ const Garage: React.FC = () => {
     useState<boolean>(false);
   const [individualAnimationInProgress, setIndividualAnimationInProgress] =
     useState<number | null>(null);
+  const [winner, setWinner] = useState<WinCar | null>(null);
+  const [showWinnerModal, setShowWinnerModal] = useState<boolean>(false);
+  const [winnerName, setWinnerName] = useState<Car | null>(null);
   const carsPerPage = 7;
 
   useEffect(() => {
@@ -129,6 +140,17 @@ const Garage: React.FC = () => {
     setEditCarColor("");
   };
 
+  const divElMumer = (isIndividualAnimation?: boolean) => {
+    const screenWidth = window.innerWidth;
+    const translateDistance = isIndividualAnimation
+      ? screenWidth * 0.7
+      : screenWidth * 0.6;
+    return {
+      transform: `translateX(${translateDistance}px)`,
+      transition: `all ${Math.floor(Math.random() * 3) + 0.5}s ease-in-out`,
+    };
+  };
+
   const indexOfLastCar = currentPage * carsPerPage;
   const indexOfFirstCar = indexOfLastCar - carsPerPage;
   const currentCars = cars ? cars.slice(indexOfFirstCar, indexOfLastCar) : [];
@@ -150,17 +172,35 @@ const Garage: React.FC = () => {
 
   const startEngine = async (id: number) => {
     try {
-      await API.startEngine(id);
-      setIndividualAnimationInProgress(id);
+      const response = await API.startEngine(id);
 
-      const updatedCars = cars.map((car) =>
-        car.id === id ? { ...car, isEngineStarted: true } : car
-      );
-      setCars(updatedCars);
+      if (!response.success) {
+        const prev = (prevCars) =>
+          prevCars.map((car) =>
+            car.id === id ? { ...car, isEngineStarted: true } : car
+          );
 
-      setTimeout(() => {
-        setIndividualAnimationInProgress(null);
-      }, 1000);
+        const winn = cars.filter((car) => car.id === id);
+
+        const car = {
+          id: id,
+          distance: response.distance,
+          velocity: response.velocity,
+          name: winn[0].name,
+        };
+
+        const winnerToApi = { id: car.id, wins: 1, time: car.velocity };
+
+        setWinnerName(car);
+        await API.createWinner(winnerToApi);
+        setIndividualAnimationInProgress(id);
+        setTimeout(() => {
+          setIndividualAnimationInProgress(null);
+          setShowWinnerModal(true);
+        }, Math.floor(Math.random() * 4000));
+      } else {
+        console.error("Failed to start engine:", response.error);
+      }
     } catch (error) {
       console.error("Error starting engine:", error);
     }
@@ -170,11 +210,42 @@ const Garage: React.FC = () => {
     try {
       setRaceAnimationInProgress(true);
 
-      await Promise.all(
+      const raceResults = await Promise.all(
         cars.map(async (car) => {
-          await API.startEngine(car.id);
+          const response = await API.startEngine(car.id);
+          console.log(response);
+
+          const { velocity, distance } = response;
+          return { id: car.id, velocity, distance };
         })
       );
+
+      const validResults = raceResults.filter(
+        (result) =>
+          result.velocity !== undefined && result.distance !== undefined
+      );
+
+      if (validResults.length === 0) {
+        console.error("No valid race results found.");
+        return;
+      }
+
+      const winningCar = validResults.reduce((prev, curr) => {
+        return prev.velocity > curr.velocity ? prev : curr;
+      });
+
+      setShowWinnerModal(true);
+
+      setWinner(winningCar);
+      const winnerToApi = {
+        id: winningCar.id,
+        wins: 1,
+        time: winningCar.velocity,
+      };
+
+      console.log(winnerToApi, "to Api");
+
+      await API.createWinner(winnerToApi);
 
       setTimeout(() => {
         setRaceAnimationInProgress(false);
@@ -183,6 +254,15 @@ const Garage: React.FC = () => {
       console.error("Error starting race:", error);
     }
   };
+
+  useEffect(() => {
+    if (winner) {
+      const winnerr = cars.find((car) => car.id === winner.id);
+      console.log(winnerr?.name, "ii");
+
+      setWinnerName({ ...winner, name: winnerr?.name });
+    }
+  }, [showWinnerModal]);
 
   const resetRace = () => {
     setRaceAnimationInProgress(false);
@@ -232,8 +312,12 @@ const Garage: React.FC = () => {
         </button>
       </div>
       <div className="grid grid-cols-1 gap-4">
-        {currentCars.map((car) => (
-          <div key={car.id} className="border border-gray-300 rounded-md p-4">
+        {currentCars.map((car: Car) => (
+          <div
+            ref={carRef}
+            key={car.id}
+            className="border border-gray-300 rounded-md p-4"
+          >
             <div className="flex gap-4 items-center">
               <div className="flex flex-col gap-2 items-start justify-center mt-2">
                 <button
@@ -274,25 +358,15 @@ const Garage: React.FC = () => {
 
               <div
                 key={car.id}
-                className={`rounded-md p-4 ${
-                  raceAnimationInProgress ||
-                  individualAnimationInProgress === car.id
-                    ? "moveCarAnimation"
-                    : ""
-                }`}
+                style={
+                  raceAnimationInProgress
+                    ? divElMumer()
+                    : individualAnimationInProgress === car.id
+                    ? divElMumer()
+                    : undefined
+                }
                 dangerouslySetInnerHTML={{ __html: renderCar(car) }}
               />
-              <div
-                className={`rounded-md p-4  ${
-                  raceAnimationInProgress ||
-                  individualAnimationInProgress === car.id
-                    ? "moveCarAnimation"
-                    : ""
-                }`}
-                style={{ color: car.color }}
-              >
-                {car.name}
-              </div>
             </div>
             {editCarId === car.id && (
               <div className="mt-2">
@@ -330,7 +404,7 @@ const Garage: React.FC = () => {
         <button
           onClick={() => paginate(currentPage - 1)}
           disabled={currentPage === 1}
-          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l"
+          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l mr-2"
         >
           Prev
         </button>
@@ -341,6 +415,18 @@ const Garage: React.FC = () => {
         >
           Next
         </button>
+        <div className="ml-10 pt-2">
+          {currentPage} out of{" "}
+          {Math.ceil(cars.length / 7) ? Math.ceil(cars.length / 7) : 1}
+        </div>
+
+        {showWinnerModal && (
+          <WinnerModal
+            winnerName={winnerName}
+            cars={cars}
+            onClose={() => setShowWinnerModal(false)}
+          />
+        )}
       </div>
     </div>
   );

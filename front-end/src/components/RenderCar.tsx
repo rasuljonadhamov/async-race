@@ -45,24 +45,23 @@ export const renderCarImg = (color: string): string => `
     </g>
   </svg>
 `;
-
 export const renderCar = ({
   id,
   name,
   color,
-  isEngineStarted,
 }: {
   id: string;
   name: string;
   color: string;
-  isEngineStarted: boolean;
-}): string => `
-
-  <div class="way">
-    <div class="car-control-container ml-5">
-      <div class="car" id="car-${id}">
-        ${renderCarImg(color)}
+}): string => {
+  return `
+    <div className="way">
+      <div class="car-control-container ml-5">
+        <div class="car flex gap-10 items-center" id="car-${id}">
+          ${renderCarImg(color)}
+          <div style="color: ${color}">${name}</div>
+        </div>
       </div>
     </div>
-  </div>
-`;
+  `;
+};

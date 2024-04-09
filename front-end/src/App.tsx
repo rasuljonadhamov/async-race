@@ -22,7 +22,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="App pt-20 bg-black h-full">
+    <div className="App pt-20 bg-gray-900 h-full">
       <header className="App-header container mx-auto px-6 ">
         <div className="mb-4">
           <button

@@ -14,4 +14,3 @@ All:  320 Points
 12.   Overall Code Quality (25 points)
 
 
-It has crud functionality: 40 points

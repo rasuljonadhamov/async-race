@@ -31,6 +31,11 @@ const carNames = [
   "Chiron",
   "Tayota",
   "Chazor",
+  "BMW",
+  "Volkswagen",
+  "Volvo",
+  "Audi",
+  "Mercedes-Benz",
 ];
 
 const Garage: React.FC = () => {
@@ -98,11 +103,15 @@ const Garage: React.FC = () => {
   };
 
   const deleteCar = async (id: number) => {
-    try {
-      await API.deleteCar(id);
-      setCars(cars.filter((car) => car.id !== id));
-    } catch (error) {
-      console.error("Error deleting car:", error);
+    const confirmModal = confirm("Are you sure you want to delete");
+
+    if (confirmModal) {
+      try {
+        await API.deleteCar(id);
+        setCars(cars.filter((car) => car.id !== id));
+      } catch (error) {
+        console.error("Error deleting car:", error);
+      }
     }
   };
 
@@ -211,7 +220,7 @@ const Garage: React.FC = () => {
       setRaceAnimationInProgress(true);
 
       const raceResults = await Promise.all(
-        cars.map(async (car) => {
+        currentCars.map(async (car) => {
           const response = await API.startEngine(car.id);
           console.log(response);
 
@@ -401,6 +410,7 @@ const Garage: React.FC = () => {
         ))}
       </div>
       <div className="flex justify-center mt-4">
+        <div className="px-3 mt-2 ml-5">Cars ({cars.length})</div>
         <button
           onClick={() => paginate(currentPage - 1)}
           disabled={currentPage === 1}
